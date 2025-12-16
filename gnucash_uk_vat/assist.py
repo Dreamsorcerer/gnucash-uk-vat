@@ -426,20 +426,22 @@ class VatReturnSubmission:
         self.textview.set_can_focus(False)
         box.pack_start(self.textview, False, False, 0)
 
-        label = Gtk.Label()
-        label.set_text(
+        label = (
             "When you submit this VAT information you are making a legal " +
             "declaration that the information is true and complete. A false " +
             "declaration can result in prosecution."
         )
-        label.set_max_width_chars(30)
-        label.set_line_wrap(True)
-        box.pack_start(label, False, False, 0)
+        self.checkbox = Gtk.CheckButton(label=label)
+        self.checkbox.connect("toggled", self.on_declaration_agreed)
+        self.checkbox.get_child().set_max_width_chars(30)
+        self.checkbox.get_child().set_line_wrap(True)
+        box.pack_start(self.checkbox, False, False, 0)
 
         def submitted(x):
             try:
                 self.ui.submit_return()
                 self.button.set_sensitive(False)
+                self.checkbox.set_sensitive(False)
                 self.label.set_text("Submission successful.")
             except Exception as e:
                 self.label.set_text(str(e))
@@ -460,10 +462,16 @@ class VatReturnSubmission:
         self.ui = ui
         self.widget = box
 
+    def on_declaration_agreed(self, button: Gtk.CheckButton) -> None:
+        self.rtn.finalised = button.get_active()
+        self.button.set_sensitive(button.get_active())
+
     def show(self, rtn):
+        self.rtn = rtn
 
         # FIXME: State is dependendent on holding an open obligation?
-        self.button.set_sensitive(True)
+        self.button.set_sensitive(False)
+        self.checkbox.set_sensitive(True)
 
         report = rtn.to_string()
 
@@ -711,7 +719,6 @@ class UI:
         # Build base of the VAT return
         rtn = model.Return()
         rtn.periodKey = self.selected_obligation.periodKey
-        rtn.finalised = True
 
         # Add VAT values
         for k in range(0, 9):
